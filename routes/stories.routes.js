@@ -1,78 +1,66 @@
 const express = require("express");
 const router = express.Router();
 const { v4: uuidv4 } = require("uuid");
+const isAuthenticated = require("../middleware/jwt.middleware");
 const mongoose = require("mongoose");
-//To be used only when checking if an id is valid, prior to making a DB call.
+// ⭡⭡ To be used only when checking if an id is valid, prior to making a DB call.
 
 const Story = require("../models/Story.model");
 const Tag = require("../models/Tag.model");
 
-//  POST /stories/  -  Creates a new story
-router.post("/", (req, res, next) => {
-  const { body, private, signed, userId, tags } = req.body;
-  const newStory = { body, private, signed, userId, tags };
-  if (!userId && private) {
-    // If there's no logged-in user, we need to create a uuid
-    // in order to be able to link to the story.
-    newStory.uuid = uuidv4();
-  }
-  Story.create(newStory)
-    .then((response) => res.json(response))
+//TODO: limit searches to 50 results & return pagination info!!
+//might put captcha for when non logged-in user makes DB request
+
+
+// GET /stories/  -  get ALL PUBLIC stories (no need to be logged in).
+router.get("/", (req, res, next) => {
+
+  Story.find({ private: false })
+    .then((resp) => res.json(resp))
     .catch((err) => {
-      console.log("Error while creating the story", err);
-      res.status(500).json({ message: "Error while creating the story" });
+      console.log("Error while retrieving stories", err);
+      res.status(500).json({ message: "Error while retrieving stories" });
     });
 });
 
-// PATCH /stories/:storyId/body  -  Update a story (body)
-router.patch("/:storyId/body", (req, res, next) => {
-  const {storyId} = req.params;
-  const { body, tags } = req.body;
-  const updatedStory = { body, tags };
-  Story.findByIdAndUpdate(storyId, updatedStory)
-    .then((response) => res.json(response))
+// GET /stories/user/self  - get EVERY story of your OWN ACCOUNT (public + private)
+//                          (PROTECTED, need to be logged in).
+router.get("/user/self", isAuthenticated, (req, res, next) => { // TODO: test this route!!
+  const selfId = req.payload.userId;
+
+  Story.find({ userId: selfId })
+    .then((resp) => res.json(resp))
     .catch((err) => {
-      console.log("Error while updating the story", err);
-      res.status(500).json({ message: "Error while updating the story" });
+      console.log("Error while retrieving stories", err);
+      res.status(500).json({ message: "Error while retrieving stories" });
     });
-})
+});
 
-// (A PATCH route for a tickbox that swaps between private/public vvvvv)
-// PATCH /stories/:storyId/privacity  -  Update a story (privacity)
-router.patch("/:storyId/privacity", (req, res, next) => {
-  const {storyId} = req.params;
-  const { private } = req.body;
-  const updatedStory = { private };
-  Story.findByIdAndUpdate(storyId, updatedStory)
-    .then((response) => res.json(response))
+// GET /stories/user/:userId  -  Get every PUBLIC story of a user (no need to be logged in).
+router.get("/user/:userId", (req, res, next) => {
+  const { userId } = req.params;
+
+  Story.find({ $and: [{ userId }, { private: false }, { signed: true }] })
+  //only (signed && public) stories belonging to a specific userId.
+    .then((resp) => res.json(resp))
     .catch((err) => {
-      console.log("Error while updating the story", err);
-      res.status(500).json({ message: "Error while updating the story" });
+      console.log("Error while retrieving stories", err);
+      res.status(500).json({ message: "Error while retrieving stories" });
     });
-})
+});
 
-// PATCH /stories/:storyId/uuid  -  Update a story (uuid)
-router.patch("/:storyId/uuid", (req, res, next) => {
-  // Will create or destroy a uuid.
-  // I mean if you're a logged in user and the story is set to private,
-  // then the "shareability" is up to whether or not the uuid exists or not.
-  const {storyId} = req.params;
-
-  Story.findById(storyId)
-  .then((story) => {
-    if (!story.uuid) {
-      const uuid = uuidv4();
-      return Story.findByIdAndUpdate(storyId, {uuid})
-    } else {
-      return Story.findByIdAndUpdate(storyId, {uuid: ""})
-    }
-  })
-  .then((resp) => res.json(resp))
-  .catch((err) => {
-    console.log("Error while managing the share link", err);
-    res.status(500).json({ message: "Error while managing the share link" });
-  });
-})
-
+// GET /stories/tag/:tagId  -  Get every PUBLIC story that matches a tag (no need to be logged in).
+/*                             In order to also see your OWN private stories added they will come from
+ *                             the GET "/stories/user/self" call.  */
+router.get("/tag/:tagId", (req, res, next) => { // TODO: test this route!!
+  const { tagId } = req.params;
+  
+  Tag.findById(tagId)
+    .then((resp) => res.json(resp))
+    .catch((err) => {
+      console.log("Error while retrieving stories", err);
+      res.status(500).json({ message: "Error while retrieving stories" });
+    });
+});
 
 module.exports = router;

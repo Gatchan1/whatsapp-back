@@ -21,6 +21,11 @@ app.use("/api", indexRoutes);
 const authRoutes = require("./routes/auth.routes");
 app.use("/auth", authRoutes);
 
+// managing single stories
+const storyRoutes = require("./routes/story.routes");
+app.use("/story", storyRoutes);
+
+// managing story arrays
 const storiesRoutes = require("./routes/stories.routes");
 app.use("/stories", storiesRoutes);
 
