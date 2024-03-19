@@ -11,10 +11,8 @@ const Tag = require("../models/Tag.model");
 //TODO: limit searches to 50 results & return pagination info!!
 //might put captcha for when non logged-in user makes DB request
 
-
 // GET /stories/  -  get ALL PUBLIC stories (no need to be logged in).
 router.get("/", (req, res, next) => {
-
   Story.find({ private: false })
     .then((resp) => res.json(resp))
     .catch((err) => {
@@ -25,7 +23,8 @@ router.get("/", (req, res, next) => {
 
 // GET /stories/user/self  - get EVERY story of your OWN ACCOUNT (public + private)
 //                          (PROTECTED, need to be logged in).
-router.get("/user/self", isAuthenticated, (req, res, next) => { // TODO: test this route!!
+router.get("/user/self", isAuthenticated, (req, res, next) => {
+  // TODO: test this route!!
   const selfId = req.payload.userId;
 
   Story.find({ userId: selfId })
@@ -41,7 +40,7 @@ router.get("/user/:userId", (req, res, next) => {
   const { userId } = req.params;
 
   Story.find({ $and: [{ userId }, { private: false }, { signed: true }] })
-  //only (signed && public) stories belonging to a specific userId.
+    //only (signed && public) stories belonging to a specific userId.
     .then((resp) => res.json(resp))
     .catch((err) => {
       console.log("Error while retrieving stories", err);
@@ -52,11 +51,20 @@ router.get("/user/:userId", (req, res, next) => {
 // GET /stories/tag/:tagId  -  Get every PUBLIC story that matches a tag (no need to be logged in).
 /*                             In order to also see your OWN private stories added they will come from
  *                             the GET "/stories/user/self" call.  */
-router.get("/tag/:tagId", (req, res, next) => { // TODO: test this route!!
+router.get("/tag/:tagId", (req, res, next) => {
   const { tagId } = req.params;
-  
+
   Tag.findById(tagId)
-    .then((resp) => res.json(resp))
+    .populate("stories")
+    .then((resp) => {
+      const stories = resp.stories;
+      if (stories[0]) {
+        const publicStories = stories.filter((story) => story.private == false);
+        res.json(publicStories);
+      } else {
+        res.json([]);
+      }
+    })
     .catch((err) => {
       console.log("Error while retrieving stories", err);
       res.status(500).json({ message: "Error while retrieving stories" });
