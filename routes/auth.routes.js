@@ -8,10 +8,15 @@ const saltRounds = 10;
 
 // POST /auth/signup  - Creates a new user in the database
 router.post("/signup", (req, res, next) => {
-  const { email, password, name } = req.body;
+  const { email, password, passwordRepeat, name } = req.body;
 
-  if (email === "" || password === "" || name === "") {
-    res.status(400).json({ message: "Provide email, password and name" });
+  if (email === "" || password === "" || passwordRepeat === "" || name === "") {
+    res.status(400).json({ message: "Please fill all fields" });
+    return;
+  }
+
+  if (password != passwordRepeat){
+    res.status(400).json({ message: "Passwords should match!" });
     return;
   }
 
@@ -21,11 +26,11 @@ router.post("/signup", (req, res, next) => {
     return;
   }
 
-  const passwordRegex = /(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,}/;
+  //const passwordRegex = /(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}/;
+  const passwordRegex = /.*/; //TODO
   if (!passwordRegex.test(password)) {
     res.status(400).json({
-      message:
-        "Password must have at least 6 characters and contain at least one number, one lowercase and one uppercase letter.",
+      message: "Password must have at least 8 characters and contain at least one number, one lowercase and one uppercase letter.",
     });
     return;
   }
@@ -34,11 +39,17 @@ router.post("/signup", (req, res, next) => {
   User.findOne({ email })
     .then((foundUser) => {
       if (foundUser) {
+        res.status(400).json({ message: "This email address is already in use." });
+        return;
+      }
+      return User.findOne({name})
+    })
+    .then((foundUser) =>{
+      if (foundUser) {
         res.status(400).json({ message: "User already exists." });
         return;
       }
-
-      // If email is unique, proceed to hash password & create user
+      // If both username and email are unique, proceed to hash password & create user
       const salt = bcrypt.genSaltSync(saltRounds);
       const hashedPassword = bcrypt.hashSync(password, salt);
 
@@ -56,37 +67,39 @@ router.post("/signup", (req, res, next) => {
 
 // POST  /auth/login - Verifies email and password and returns a JWT
 router.post("/login", (req, res, next) => {
-  const { email, password } = req.body;
+  const { user, password } = req.body;
+  let email, name;
 
-  if (email === "" || password === "") {
-    res.status(400).json({ message: "Provide email and password." });
+  if (user === "" || password === "") {
+    res.status(400).json({ message: "Provide username (or email) and password." });
     return;
   }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  if (emailRegex.test(user)) {
+    userQuery = {email: user}
+  } else {
+    userQuery = {name: user}
+  } 
 
-  // Check the users collection if a user with the same email exists
-  User.findOne({ email })
+  // Check the users collection if a user with the same username or email exists
+  User.findOne(userQuery)
     .then((foundUser) => {
       if (!foundUser) {
         res.status(401).json({ message: "User not found." });
         return;
       }
-
-      // Compare the provided password with the one saved in the database
       const passwordCorrect = bcrypt.compareSync(password, foundUser.password);
 
       if (passwordCorrect) {
         const { _id, email, name } = foundUser;
 
-        // Create an object that will be set as the token payload
         const payload = { _id, email, name };
 
-        // Create a JSON Web Token and sign it
         const authToken = jwt.sign(payload, process.env.TOKEN_SECRET, {
           algorithm: "HS256",
-          expiresIn: "6h",
+          expiresIn: "24h",
         });
 
-        // Send the token as the response
         res.status(200).json({ authToken: authToken });
       } else {
         res.status(401).json({ message: "Unable to authenticate the user" });
