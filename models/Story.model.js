@@ -6,6 +6,9 @@ const storySchema = new Schema(
       type: String,
       required: [true, "Some text is required."],
     },
+    pov: {
+      type: String,
+    },
     uuid: {
       type: String,
     },
