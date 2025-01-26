@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const { v4: uuidv4 } = require("uuid");
 const isAuthenticated = require("../middleware/jwt.middleware");
-const mongoose = require("mongoose");
 // ⭡⭡ To be used only when checking if an id is valid, prior to making a DB call.
 
 const Story = require("../models/Story.model");
