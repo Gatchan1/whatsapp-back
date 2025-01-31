@@ -9,8 +9,8 @@ const Tag = require("../models/Tag.model");
 
 //  POST /story/  -  Creates a new story
 router.post("/", (req, res, next) => {
-  const { body, pov, private, signed, userId, tags } = req.body;
-  const newStory = { body, pov, private, signed, userId, tags };
+  const { body, pov, private, signed, user, tags } = req.body;
+  const newStory = { body, pov, private, signed, user, tags };
   if (private) {
     // We need to create a uuid in order to be able to link to the story.
     newStory.uuid = uuidv4();
@@ -103,6 +103,7 @@ router.get("/:storyId", (req, res, next) => {
   const { storyId } = req.params;
 
   Story.findById(storyId)
+    .populate("user")
     .then((resp) => {
       if (!resp || resp.private) {
         return res.status(404).json({ message: "Story not found" });

@@ -26,7 +26,7 @@ router.get("/user/self", isAuthenticated, (req, res, next) => {
   // TODO: test this route!!
   const selfId = req.payload.userId;
 
-  Story.find({ userId: selfId })
+  Story.find({ user: selfId })
     .then((resp) => res.json(resp))
     .catch((err) => {
       console.log("Error while retrieving stories", err);
@@ -38,7 +38,7 @@ router.get("/user/self", isAuthenticated, (req, res, next) => {
 router.get("/user/:userId", (req, res, next) => {
   const { userId } = req.params;
 
-  Story.find({ $and: [{ userId }, { private: false }, { signed: true }] })
+  Story.find({ $and: [{ user: userId }, { private: false }, { signed: true }] })
     //only (signed && public) stories belonging to a specific userId.
     .then((resp) => res.json(resp))
     .catch((err) => {

@@ -18,10 +18,12 @@ const storySchema = new Schema(
     },
     signed: {
       type: Boolean,
-      //if logged-in user: "default" should be true (but the user can choose).
+      //if logged-in user: 
+      //    story private: signed == false;
+      //    story !private: user chooses signed true/false.
       //if unlogged-in user: can only be false.
     },
-    userId: { type: Schema.Types.ObjectId, ref: "User" },
+    user: { type: Schema.Types.ObjectId, ref: "User" },
     tags: [{ type: Schema.Types.ObjectId, ref: "Tag" }],
   },
   {
